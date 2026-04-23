@@ -1,5 +1,5 @@
 """
-Django settings for film_platform project.
+Parametres Django du projet film_platform.
 """
 
 import os
@@ -14,14 +14,17 @@ DEBUG = True
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', 'testserver']
 
 INSTALLED_APPS = [
+    # Applications Django natives.
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Applications tierces utilisees pour l'API.
     'rest_framework',
     'django_filters',
+    # Application locale du catalogue de films.
     'movies',
 ]
 
@@ -40,6 +43,7 @@ ROOT_URLCONF = 'film_platform.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        # Dossier global des templates en plus des templates propres aux apps.
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -57,6 +61,7 @@ WSGI_APPLICATION = 'film_platform.wsgi.application'
 
 DATABASES = {
     'default': {
+        # SQLite est adapte au developpement local de ce projet.
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
@@ -91,14 +96,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Custom user model
+# Modele utilisateur personnalise de l'application movies.
 AUTH_USER_MODEL = 'movies.User'
 
-# Login/Logout redirects
+# Redirections apres connexion et deconnexion.
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# Django REST Framework Configuration
+# Configuration Django REST Framework.
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
