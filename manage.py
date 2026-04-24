@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""Django's command-line utility for administrative tasks."""
+"""Utilitaire en ligne de commande Django pour les taches d'administration."""
 import os
 import sys
 
 
 def main():
-    """Run administrative tasks."""
+    """Lance les commandes d'administration Django."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'film_platform.settings')
     try:
         from django.core.management import execute_from_command_line
@@ -20,4 +20,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
