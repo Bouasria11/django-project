@@ -1,6 +1,6 @@
 """
-API Views and ViewSets for the movies application.
-Provides CRUD operations with proper permissions and optimizations.
+Vues API et ViewSets pour l'application movies.
+Fournit les operations CRUD avec permissions et optimisations adaptees.
 """
 
 from rest_framework import viewsets, status, mixins
@@ -24,9 +24,9 @@ from .permissions import (
 
 class GenreViewSet(viewsets.ModelViewSet):
     """
-    API endpoint for Film Genres.
-    - List/Retrieve: Available to all
-    - Create/Update/Delete: Admin only
+    Endpoint API pour les genres.
+    - Lecture: disponible pour tous
+    - Creation/modification/suppression: reservees aux administrateurs
     """
     queryset = Genre.objects.annotate(films_count=Count('films')).all()
     serializer_class = GenreSerializer
@@ -42,10 +42,10 @@ class GenreViewSet(viewsets.ModelViewSet):
 
 class FilmViewSet(viewsets.ModelViewSet):
     """
-    API endpoint for Films.
-    - List/Retrieve: Available to all
-    - Create/Update/Delete: Admin only
-    - Custom actions: stats, toggle_watchlist
+    Endpoint API pour les films.
+    - Lecture: disponible pour tous
+    - Creation/modification/suppression: reservees aux administrateurs
+    - Actions personnalisees: stats, toggle_watchlist
     """
     queryset = Film.objects.select_related('genre').all()
     serializer_class = FilmSerializer
@@ -57,7 +57,7 @@ class FilmViewSet(viewsets.ModelViewSet):
     filterset_fields = ['genre']
 
     def get_queryset(self):
-        """Optimize queryset with annotations"""
+        """Optimise la requete avec les statistiques calculees."""
         queryset = super().get_queryset()
         queryset = queryset.annotate(
             average_rating=Avg('reviews__rating'),
@@ -67,14 +67,14 @@ class FilmViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def stats(self, request, id=None):
-        """Get detailed statistics for a film"""
+        """Retourne les statistiques detaillees d'un film."""
         film = self.get_object()
         serializer = FilmStatsSerializer(film)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def toggle_watchlist(self, request, id=None):
-        """Add or remove film from user's watchlist"""
+        """Ajoute ou retire le film de la watchlist de l'utilisateur."""
         film = self.get_object()
         user = request.user
         watchlist_item, created = Watchlist.objects.get_or_create(user=user, film=film)
@@ -93,7 +93,7 @@ class FilmViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def featured(self, request):
-        """Get featured films (top rated with sufficient reviews)"""
+        """Retourne les films mis en avant, bien notes et assez commentes."""
         films = Film.objects.annotate(
             avg_rating=Avg('reviews__rating'),
             review_count=Count('reviews')
@@ -104,7 +104,7 @@ class FilmViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def recent(self, request):
-        """Get recently added films"""
+        """Retourne les films ajoutes recemment."""
         films = Film.objects.order_by('-created_at')[:8]
         serializer = self.get_serializer(films, many=True)
         return Response(serializer.data)
@@ -112,10 +112,10 @@ class FilmViewSet(viewsets.ModelViewSet):
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """
-    API endpoint for Film Reviews.
-    - Users can create, update, delete their own reviews
-    - Admins have full access
-    - All authenticated users can list/view reviews
+    Endpoint API pour les avis.
+    - Les utilisateurs gerent leurs propres avis
+    - Les administrateurs ont un acces complet
+    - Les utilisateurs connectes peuvent lister et consulter les avis
     """
     queryset = Review.objects.select_related('user', 'film').all()
     serializer_class = ReviewSerializer
@@ -127,19 +127,19 @@ class ReviewViewSet(viewsets.ModelViewSet):
     filterset_fields = ['film', 'user', 'rating']
 
     def perform_create(self, serializer):
-        """Auto-assign current user"""
+        """Associe automatiquement l'utilisateur courant."""
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
-        """Optimize with select_related to avoid N+1 queries"""
+        """Utilise select_related pour eviter les requetes N+1."""
         return super().get_queryset().select_related('user', 'film')
 
 
 class WatchlistViewSet(viewsets.ModelViewSet):
     """
-    API endpoint for User Watchlist.
-    - Users can only access their own watchlist
-    - Admins can view all watchlists
+    Endpoint API pour les watchlists.
+    - Les utilisateurs voient seulement leur propre watchlist
+    - Les administrateurs peuvent consulter toutes les watchlists
     """
     queryset = Watchlist.objects.select_related('user', 'film').all()
     serializer_class = WatchlistSerializer
@@ -149,19 +149,19 @@ class WatchlistViewSet(viewsets.ModelViewSet):
     ordering = ['-added_at']
 
     def get_queryset(self):
-        """Filter to show only user's own watchlist unless admin"""
+        """Filtre la watchlist selon le role de l'utilisateur."""
         user = self.request.user
         if user.is_admin_role:
             return super().get_queryset()
         return super().get_queryset().filter(user=user)
 
     def perform_create(self, serializer):
-        """Auto-assign current user"""
+        """Associe automatiquement l'utilisateur courant."""
         serializer.save(user=self.request.user)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_watchlist(self, request):
-        """Get current user's watchlist"""
+        """Retourne la watchlist de l'utilisateur courant."""
         queryset = self.get_queryset().filter(user=request.user)
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -173,9 +173,9 @@ class WatchlistViewSet(viewsets.ModelViewSet):
 
 class UserViewSet(viewsets.ModelViewSet):
     """
-    API endpoint for Users.
-    - Users can view and edit their own profile
-    - Admins have full access
+    Endpoint API pour les utilisateurs.
+    - Les utilisateurs consultent et modifient leur propre profil
+    - Les administrateurs ont un acces complet
     """
     queryset = User.objects.prefetch_related('favorite_genres', 'watchlist').all()
     serializer_class = UserSerializer
@@ -186,19 +186,19 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering = ['username']
 
     def get_queryset(self):
-        """Admins see all users, regular users see public profiles"""
+        """Les admins voient tout, les autres voient seulement les profils publics."""
         user = self.request.user
         if user.is_authenticated and user.is_admin_role:
             return super().get_queryset()
-        # Regular users can only see basic info of other users
+        # Les utilisateurs standards ne voient que les informations publiques.
         return super().get_queryset().only('id', 'username', 'bio', 'profile_picture')
 
     def get_permissions(self):
         """
-        Custom permissions:
-        - List/Retrieve: Any authenticated user
-        - Create: Allow any (public registration)
-        - Update/Delete: Owner or admin only
+        Permissions personnalisees:
+        - Liste/detail: utilisateur authentifie
+        - Creation: inscription publique
+        - Modification/suppression: proprietaire ou admin uniquement
         """
         if self.action in ['list', 'retrieve']:
             permission_classes = [IsAuthenticated]
@@ -210,7 +210,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def reviews(self, request, username=None):
-        """Get all reviews by a specific user"""
+        """Retourne tous les avis d'un utilisateur."""
         user = self.get_object()
         reviews = user.reviews.select_related('film').order_by('-created_at')
         page = self.paginate_queryset(reviews)
@@ -222,9 +222,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def watchlist(self, request, username=None):
-        """Get user's watchlist"""
+        """Retourne la watchlist d'un utilisateur."""
         user = self.get_object()
-        # Users can only see their own watchlist unless they're admin
+        # Seul le proprietaire ou un admin peut consulter cette watchlist.
         if not request.user.is_admin_role and user != request.user:
             return Response(
                 {'detail': 'You do not have permission to view this watchlist.'},
@@ -236,21 +236,21 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def stats(self, request, username=None):
-        """Get user statistics"""
+        """Retourne les statistiques d'un utilisateur."""
         user = self.get_object()
         serializer = UserReviewStatsSerializer(user)
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        """Create user with hashed password"""
+        """Cree un utilisateur avec mot de passe hache."""
         user = serializer.save()
-        # Optionally send welcome email or other signals
+        # Point d'extension: envoyer un email de bienvenue ou declencher un signal.
 
 
 class ReviewStatsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
-    ViewSet for aggregated review statistics.
-    Provides top-rated films, genre stats, etc.
+    ViewSet pour les statistiques agregees des avis.
+    Fournit les films les mieux notes, les stats par genre, etc.
     """
     queryset = Film.objects.all()
     serializer_class = FilmStatsSerializer
@@ -258,7 +258,7 @@ class ReviewStatsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def top_rated(self, request):
-        """Get top-rated films (min 5 reviews)"""
+        """Retourne les films les mieux notes avec au moins 5 avis."""
         films = Film.objects.annotate(
             avg_rating=Avg('reviews__rating'),
             review_count=Count('reviews')
@@ -268,7 +268,7 @@ class ReviewStatsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def most_reviewed(self, request):
-        """Get most reviewed films"""
+        """Retourne les films les plus commentes."""
         films = Film.objects.annotate(
             review_count=Count('reviews')
         ).order_by('-review_count')[:10]
@@ -277,7 +277,7 @@ class ReviewStatsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def genre_stats(self, request):
-        """Get statistics by genre"""
+        """Retourne les statistiques groupees par genre."""
         from django.db.models import Avg, Count
         genre_stats = Genre.objects.annotate(
             film_count=Count('films'),
