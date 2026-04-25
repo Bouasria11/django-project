@@ -1,12 +1,12 @@
 """
-API URL routing for the movies application.
+Routage des URLs API pour l'application movies.
 """
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import api_views
 
-# Create a router and register our ViewSets
+# Le routeur genere automatiquement les routes CRUD de chaque ViewSet.
 router = DefaultRouter()
 router.register(r'genres', api_views.GenreViewSet, basename='genre')
 router.register(r'films', api_views.FilmViewSet, basename='film')
@@ -16,9 +16,9 @@ router.register(r'users', api_views.UserViewSet, basename='user')
 router.register(r'stats', api_views.ReviewStatsViewSet, basename='stats')
 
 urlpatterns = [
-    # Router URLs
+    # Toutes les routes API exposees par le routeur DRF.
     path('', include(router.urls)),
     
-    # Additional custom endpoints could be added here if needed
-    # Example: path('recommendations/', api_views.RecommendationsView.as_view(), name='recommendations'),
+    # Ajouter ici des endpoints API supplementaires si necessaire.
+    # Exemple: path('recommendations/', api_views.RecommendationsView.as_view(), name='recommendations'),
 ]
