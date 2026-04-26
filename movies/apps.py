@@ -5,4 +5,5 @@ class MoviesConfig(AppConfig):
     name = 'movies'
 
     def ready(self):
+        # Charge les signaux au demarrage de l'application.
         import movies.signals
