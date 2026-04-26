@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from .models import User, Film, Review, Genre
 
 class GenreForm(forms.ModelForm):
+    # Formulaire simple pour creer ou modifier un genre.
     class Meta:
         model = Genre
         fields = ['name', 'description']
@@ -13,6 +14,7 @@ class GenreForm(forms.ModelForm):
         }
 
 class FilmForm(forms.ModelForm):
+    # Formulaire principal de gestion des films dans l'interface web.
     class Meta:
         model = Film
         fields = ['title', 'genre', 'description', 'release_date', 'director', 'duration_minutes', 'poster', 'trailer_url']
@@ -28,12 +30,14 @@ class FilmForm(forms.ModelForm):
         }
 
     def clean_duration_minutes(self):
+        # Refuse une duree nulle ou negative.
         duration = self.cleaned_data.get('duration_minutes')
         if duration is not None and duration <= 0:
             raise ValidationError("La durée doit être positive.")
         return duration
 
 class ReviewForm(forms.ModelForm):
+    # Formulaire utilise pour ajouter ou modifier un avis.
     class Meta:
         model = Review
         fields = ['rating', 'comment']
@@ -43,6 +47,7 @@ class ReviewForm(forms.ModelForm):
         }
 
 class UserRegistrationForm(UserCreationForm):
+    # Etend le formulaire Django pour ajouter email, role et informations de profil.
     email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={'class': 'form-control'}))
     role = forms.ChoiceField(
         choices=User.Role.choices,
@@ -64,6 +69,7 @@ class UserRegistrationForm(UserCreationForm):
         }
 
     def save(self, commit=True):
+        # Sauvegarde les champs personnalises apres la creation Django de l'utilisateur.
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
         role = self.cleaned_data.get('role')
@@ -74,10 +80,12 @@ class UserRegistrationForm(UserCreationForm):
         return user
 
 class UserLoginForm(AuthenticationForm):
+    # Personnalise les champs de connexion avec les classes Bootstrap.
     username = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom d\'utilisateur'}))
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Mot de passe'}))
 
 class UserProfileForm(forms.ModelForm):
+    # Formulaire de mise a jour du profil utilisateur.
     class Meta:
         model = User
         fields = ['username', 'email', 'bio', 'profile_picture', 'birth_date', 'favorite_genres']
@@ -91,4 +99,5 @@ class UserProfileForm(forms.ModelForm):
         }
 
 class WatchlistForm(forms.Form):
+    # Formulaire minimal pour transmettre l'identifiant du film.
     film = forms.IntegerField(widget=forms.HiddenInput())
