@@ -1,6 +1,6 @@
 """
-Custom permission classes for the movies API.
-Provides role-based access control and object-level permissions.
+Classes de permissions personnalisees pour l'API movies.
+Gere les acces par role et les permissions au niveau des objets.
 """
 
 from rest_framework import permissions
@@ -8,45 +8,45 @@ from rest_framework import permissions
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     """
-    Allow read access to all, but only admins can create, update, or delete.
+    Autorise la lecture pour tous, mais reserve l'ecriture aux admins.
     """
     def has_permission(self, request, view):
-        # Read permissions are allowed to any request
+        # Les methodes de lecture sont accessibles sans restriction.
         if request.method in permissions.SAFE_METHODS:
             return True
-        # Write permissions require admin role
+        # Les methodes d'ecriture necessitent le role administrateur.
         return request.user.is_authenticated and request.user.is_admin_role
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
-    Object-level permission to only allow owners of an object to edit it.
-    Assumes the model instance has an `user` attribute.
+    Permission objet: seul le proprietaire peut modifier l'objet.
+    Suppose que l'instance possede un attribut `user`.
     """
     def has_object_permission(self, request, view, obj):
-        # Read permissions are allowed to any request
+        # La lecture reste autorisee.
         if request.method in permissions.SAFE_METHODS:
             return True
-        # Write permissions require the user to be the owner
+        # L'ecriture exige que l'utilisateur soit proprietaire.
         return obj.user == request.user
 
 
 class IsAdminOrOwner(permissions.BasePermission):
     """
-    Allow admins full access, or users to access their own resources.
+    Autorise les admins partout, ou les utilisateurs sur leurs propres ressources.
     """
     def has_object_permission(self, request, view, obj):
-        # Admins have full access
+        # Les administrateurs ont un acces complet.
         if request.user.is_admin_role:
             return True
-        # Users can only access their own resources
+        # Les autres utilisateurs ne peuvent acceder qu'a leurs ressources.
         return obj.user == request.user
 
 
 class IsAdminOrFavoritedByUser(permissions.BasePermission):
     """
-    For Genre: admins can edit, users can only read.
-    Genres are global resources, not user-owned.
+    Pour Genre: les admins modifient, les autres utilisateurs lisent seulement.
+    Les genres sont des ressources globales, sans proprietaire utilisateur.
     """
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
@@ -56,27 +56,27 @@ class IsAdminOrFavoritedByUser(permissions.BasePermission):
 
 class CanAddReview(permissions.BasePermission):
     """
-    Allows authenticated users to add reviews, but only edit their own.
+    Autorise les utilisateurs connectes a ajouter et gerer leurs avis.
     """
     def has_permission(self, request, view):
-        # Any authenticated user can add a review
+        # Tout utilisateur authentifie peut ajouter un avis.
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # Read permissions allowed
+        # La lecture est autorisee.
         if request.method in permissions.SAFE_METHODS:
             return True
-        # Write permissions require the user to be the review owner or admin
+        # L'ecriture exige le proprietaire de l'avis ou un administrateur.
         return obj.user == request.user or request.user.is_admin_role
 
 
 class CanManageWatchlist(permissions.BasePermission):
     """
-    Allows authenticated users to manage their own watchlist.
+    Autorise les utilisateurs connectes a gerer leur propre watchlist.
     """
     def has_permission(self, request, view):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # Users can only modify their own watchlist items
+        # Un utilisateur ne modifie que les entrees de sa propre watchlist.
         return obj.user == request.user
