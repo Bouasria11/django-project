@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser, Permission
 from django.utils.translation import gettext_lazy as _
 
 class User(AbstractUser):
-    """Custom user model with role-based permissions"""
+    """Modele utilisateur personnalise avec permissions basees sur le role."""
 
     class Role(models.TextChoices):
         SPECTATOR = 'SPECTATOR', _('Spectateur')
@@ -28,6 +28,7 @@ class User(AbstractUser):
     birth_date = models.DateField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
+        # Synchronise le role metier avec les permissions natives de Django.
         if self.role == self.Role.ADMIN:
             self.is_staff = True
             self.is_superuser = True
@@ -48,7 +49,7 @@ class User(AbstractUser):
         return f"{self.username} ({self.get_role_display()})"
 
 class Genre(models.Model):
-    """Film genre model"""
+    """Modele representant un genre de film."""
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -62,7 +63,7 @@ class Genre(models.Model):
         return self.name
 
 class Film(models.Model):
-    """Film model with all required fields"""
+    """Modele principal du catalogue de films."""
 
     title = models.CharField(max_length=200)
     genre = models.ForeignKey(Genre, on_delete=models.SET_NULL, null=True, related_name='films')
@@ -76,6 +77,7 @@ class Film(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        # Les index accelerent les recherches et tris les plus frequents.
         ordering = ['-release_date', 'title']
         indexes = [
             models.Index(fields=['title']),
@@ -88,6 +90,7 @@ class Film(models.Model):
 
     @property
     def average_rating(self):
+        # Calcule la moyenne des notes a partir des avis lies au film.
         reviews = self.reviews.all()
         if reviews.exists():
             return round(reviews.aggregate(models.Avg('rating'))['rating__avg'], 1)
@@ -95,10 +98,11 @@ class Film(models.Model):
 
     @property
     def review_count(self):
+        # Nombre total d'avis associes au film.
         return self.reviews.count()
 
 class Review(models.Model):
-    """User review and rating for a film"""
+    """Avis et note laisses par un utilisateur sur un film."""
 
     RATING_CHOICES = [
         (1, '1 - Mauvais'),
@@ -116,6 +120,7 @@ class Review(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        # Un utilisateur ne peut laisser qu'un seul avis par film.
         unique_together = ['user', 'film']
         ordering = ['-created_at']
         indexes = [
@@ -127,18 +132,20 @@ class Review(models.Model):
         return f"{self.user.username} - {self.film.title} ({self.rating}/5)"
 
     def clean(self):
+        # Validation de securite cote modele, en plus des formulaires/API.
         from django.core.exceptions import ValidationError
         if self.rating < 1 or self.rating > 5:
             raise ValidationError({'rating': 'La note doit être comprise entre 1 et 5.'})
 
 class Watchlist(models.Model):
-    """User watchlist"""
+    """Liste personnelle de films a regarder."""
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='watchlist')
     film = models.ForeignKey(Film, on_delete=models.CASCADE, related_name='in_watchlists')
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        # Evite les doublons dans la watchlist d'un meme utilisateur.
         unique_together = ['user', 'film']
         ordering = ['-added_at']
 
