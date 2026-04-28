@@ -5,8 +5,9 @@ from .models import User
 
 @receiver(post_save, sender=User)
 def assign_user_to_group(sender, instance, created, **kwargs):
-    """Assign user to appropriate group based on role"""
+    """Associe l'utilisateur au groupe Django correspondant a son role."""
     if created:
+        # Les groupes facilitent la gestion des permissions depuis l'administration.
         if instance.role == User.Role.ADMIN:
             admin_group, _ = Group.objects.get_or_create(name='Administrators')
             instance.groups.add(admin_group)
