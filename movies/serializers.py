@@ -1,6 +1,6 @@
 """
-Serializers for the movies API.
-Handles validation, transformation, and representation of model instances.
+Serializers pour l'API movies.
+Gere la validation, la transformation et la representation des modeles.
 """
 
 from rest_framework import serializers
@@ -10,7 +10,7 @@ from .models import User, Genre, Film, Review, Watchlist
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User model with role-based field handling"""
+    """Serializer du modele User avec gestion des champs selon le role."""
     password = serializers.CharField(write_only=True, required=False, min_length=8)
     email = serializers.EmailField(required=True)
     role = serializers.ChoiceField(choices=User.Role.choices, required=False)
@@ -30,19 +30,19 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'is_staff', 'is_superuser', 'date_joined', 'last_login']
 
     def validate_username(self, value):
-        """Validate username uniqueness"""
+        """Valide l'unicite du nom d'utilisateur."""
         if self.instance:
-            # Update scenario
+            # Cas modification: exclut l'utilisateur courant.
             if User.objects.filter(username=value).exclude(pk=self.instance.pk).exists():
                 raise serializers.ValidationError("This username is already taken.")
         else:
-            # Create scenario
+            # Cas creation: aucun utilisateur existant ne doit avoir ce nom.
             if User.objects.filter(username=value).exists():
                 raise serializers.ValidationError("This username is already taken.")
         return value
 
     def validate_email(self, value):
-        """Validate email uniqueness and format"""
+        """Valide l'unicite et le format de l'email."""
         if self.instance:
             if User.objects.filter(email=value).exclude(pk=self.instance.pk).exists():
                 raise serializers.ValidationError("This email is already in use.")
@@ -52,7 +52,7 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_password(self, value):
-        """Use Django's built-in password validation"""
+        """Utilise la validation native des mots de passe Django."""
         try:
             validate_password(value, self.instance)
         except ValidationError as e:
@@ -60,7 +60,7 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_role(self, value):
-        """Only admins can assign admin role"""
+        """Seuls les administrateurs peuvent attribuer le role admin."""
         request = self.context.get('request')
         if value == User.Role.ADMIN:
             if not request or not request.user.is_admin_role:
@@ -68,7 +68,7 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        """Create user with hashed password"""
+        """Cree l'utilisateur avec un mot de passe hache."""
         password = validated_data.pop('password', None)
         favorite_genres = validated_data.pop('favorite_genres', [])
         user = User(**validated_data)
@@ -79,7 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        """Update user with proper password handling"""
+        """Met a jour l'utilisateur en traitant correctement le mot de passe."""
         password = validated_data.pop('password', None)
         favorite_genres = validated_data.pop('favorite_genres', None)
         
@@ -98,7 +98,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class GenreSerializer(serializers.ModelSerializer):
-    """Serializer for Genre model"""
+    """Serializer du modele Genre."""
     films_count = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -107,7 +107,7 @@ class GenreSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'films_count']
 
     def validate_name(self, value):
-        """Validate genre name uniqueness"""
+        """Valide l'unicite du nom de genre."""
         if self.instance:
             if Genre.objects.filter(name__iexact=value).exclude(pk=self.instance.pk).exists():
                 raise serializers.ValidationError("A genre with this name already exists.")
@@ -118,7 +118,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class FilmSerializer(serializers.ModelSerializer):
-    """Serializer for Film model with computed fields"""
+    """Serializer du modele Film avec champs calcules."""
     genre = GenreSerializer(read_only=True)
     genre_id = serializers.PrimaryKeyRelatedField(
         queryset=Genre.objects.all(),
@@ -142,20 +142,20 @@ class FilmSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at', 'average_rating', 'review_count', 'is_in_watchlist']
 
     def get_is_in_watchlist(self, obj):
-        """Check if film is in current user's watchlist"""
+        """Verifie si le film est dans la watchlist de l'utilisateur courant."""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.in_watchlists.filter(user=request.user).exists()
         return False
 
     def validate_duration_minutes(self, value):
-        """Validate duration is positive"""
+        """Valide que la duree est positive."""
         if value is not None and value <= 0:
             raise serializers.ValidationError("Duration must be positive.")
         return value
 
     def validate_release_date(self, value):
-        """Validate release date is not in the future (optional business rule)"""
+        """Valide que la date de sortie n'est pas dans le futur."""
         from datetime import date
         if value > date.today():
             raise serializers.ValidationError("Release date cannot be in the future.")
@@ -163,7 +163,7 @@ class FilmSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    """Serializer for Review model with ownership info"""
+    """Serializer du modele Review avec les informations de proprietaire."""
     user = UserSerializer(read_only=True)
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
@@ -187,31 +187,31 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
     def validate_rating(self, value):
-        """Ensure rating is between 1 and 5"""
+        """Garantit que la note est comprise entre 1 et 5."""
         if value < 1 or value > 5:
             raise serializers.ValidationError("Rating must be between 1 and 5.")
         return value
 
     def validate(self, attrs):
         """
-        Validate that a user can only have one review per film.
+        Verifie qu'un utilisateur ne possede qu'un avis par film.
         """
         user = attrs.get('user') or self.context['request'].user
         film = attrs.get('film')
 
         if self.instance:
-            # Update scenario: exclude current instance
+            # Modification: exclut l'avis courant de la recherche de doublon.
             if Review.objects.filter(user=user, film=film).exclude(pk=self.instance.pk).exists():
                 raise serializers.ValidationError("You have already reviewed this film.")
         else:
-            # Create scenario
+            # Creation: refuse un deuxieme avis pour le meme film.
             if Review.objects.filter(user=user, film=film).exists():
                 raise serializers.ValidationError("You have already reviewed this film.")
         
         return attrs
 
     def create(self, validated_data):
-        """Auto-assign current user if not provided"""
+        """Associe l'utilisateur courant s'il n'est pas fourni."""
         request = self.context.get('request')
         if not validated_data.get('user'):
             validated_data['user'] = request.user
@@ -219,7 +219,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class WatchlistSerializer(serializers.ModelSerializer):
-    """Serializer for Watchlist model"""
+    """Serializer du modele Watchlist."""
     user = UserSerializer(read_only=True)
     film = FilmSerializer(read_only=True)
     film_id = serializers.PrimaryKeyRelatedField(
@@ -234,13 +234,13 @@ class WatchlistSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'added_at']
 
     def create(self, validated_data):
-        """Auto-assign current user"""
+        """Associe automatiquement l'utilisateur courant."""
         request = self.context.get('request')
         validated_data['user'] = request.user
         return super().create(validated_data)
 
     def validate_film_id(self, value):
-        """Ensure film exists and is not already in watchlist"""
+        """Verifie que le film existe et n'est pas deja dans la watchlist."""
         user = self.context['request'].user
         if Watchlist.objects.filter(user=user, film=value).exists():
             raise serializers.ValidationError("This film is already in your watchlist.")
@@ -248,7 +248,7 @@ class WatchlistSerializer(serializers.ModelSerializer):
 
 
 class FilmStatsSerializer(serializers.ModelSerializer):
-    """Serializer for film statistics (aggregated data)"""
+    """Serializer des statistiques agregees d'un film."""
     average_rating = serializers.FloatField(read_only=True)
     review_count = serializers.IntegerField(read_only=True)
     rating_distribution = serializers.SerializerMethodField(read_only=True)
@@ -258,7 +258,7 @@ class FilmStatsSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'average_rating', 'review_count', 'rating_distribution']
 
     def get_rating_distribution(self, obj):
-        """Get distribution of ratings for this film"""
+        """Retourne la distribution des notes pour ce film."""
         from django.db.models import Count
         distribution = {}
         reviews = obj.reviews.values('rating').annotate(count=Count('rating'))
@@ -268,7 +268,7 @@ class FilmStatsSerializer(serializers.ModelSerializer):
 
 
 class UserReviewStatsSerializer(serializers.ModelSerializer):
-    """Serializer for user review statistics"""
+    """Serializer des statistiques d'avis d'un utilisateur."""
     total_reviews = serializers.IntegerField(read_only=True)
     average_rating_given = serializers.FloatField(read_only=True)
     recent_reviews = serializers.SerializerMethodField(read_only=True)
@@ -278,7 +278,7 @@ class UserReviewStatsSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'total_reviews', 'average_rating_given', 'recent_reviews']
 
     def get_recent_reviews(self, obj):
-        """Get user's 5 most recent reviews"""
+        """Retourne les 5 avis les plus recents de l'utilisateur."""
         reviews = obj.reviews.select_related('film').order_by('-created_at')[:5]
         return [
             {
