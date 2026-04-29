@@ -3,18 +3,18 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from .models import Genre, Film, Review, Watchlist
 
-# Workaround for Python 3.14 compatibility with Django test framework
-# Patch Context.__copy__ to avoid 'super' object has no attribute 'dicts' error
+# Contournement pour la compatibilite Python 3.14 avec le framework de test Django.
+# Corrige Context.__copy__ afin d'eviter l'erreur liee a l'attribut "dicts".
 try:
     from django.template.context import Context, RequestContext
 
     def _patched_context_copy(self):
-        # Create a new context of the same type
+        # Cree un nouveau contexte du meme type que l'original.
         if isinstance(self, RequestContext):
             new = RequestContext(self.request, {})
         else:
             new = Context({})
-        # Copy state
+        # Copie l'etat interne necessaire aux assertions de templates.
         new.dicts = self.dicts[:]
         new.autoescape = self.autoescape
         new.use_l10n = getattr(self, 'use_l10n', True)
@@ -140,23 +140,23 @@ class ViewTests(TestCase):
         self.assertTemplateUsed(response, 'movies/search.html')
 
     def test_login_required_views(self):
-        # Test that add_review requires login
+        # Verifie que l'ajout d'avis exige une connexion.
         response = self.client.get(reverse('movies:add_review', kwargs={'pk': self.film.pk}))
-        self.assertEqual(response.status_code, 302)  # Redirect to login
+        self.assertEqual(response.status_code, 302)  # Redirection vers la connexion.
 
-        # Test that user_dashboard requires login
+        # Verifie que le tableau de bord exige une connexion.
         response = self.client.get(reverse('movies:user_dashboard'))
         self.assertEqual(response.status_code, 302)
 
-        # Test that recommendations requires login
+        # Verifie que les recommandations exigent une connexion.
         response = self.client.get(reverse('movies:recommendations'))
         self.assertEqual(response.status_code, 302)
 
     def test_admin_required_views(self):
-        # Test film_create requires admin
+        # Verifie que la creation de film exige le role administrateur.
         self.client.login(username='spectator1', password='testpass123')
         response = self.client.get(reverse('movies:film_create'))
-        self.assertEqual(response.status_code, 302)  # Redirect
+        self.assertEqual(response.status_code, 302)  # Redirection.
 
         self.client.login(username='admin1', password='testpass123')
         response = self.client.get(reverse('movies:film_create'))
@@ -165,18 +165,18 @@ class ViewTests(TestCase):
     def test_film_crud_operations(self):
         self.client.login(username='admin1', password='testpass123')
 
-        # Test create
+        # Creation d'un film par un administrateur.
         response = self.client.post(reverse('movies:film_create'), {
             'title': 'New Film',
             'genre': self.genre.id,
             'description': 'New description',
             'release_date': '2024-02-02',
         })
-        self.assertEqual(response.status_code, 302)  # Redirect after successful creation
+        self.assertEqual(response.status_code, 302)  # Redirection apres creation reussie.
         new_film = Film.objects.get(title='New Film')
         self.assertIsNotNone(new_film)
 
-        # Test update
+        # Modification du film cree.
         response = self.client.post(reverse('movies:film_update', kwargs={'pk': new_film.pk}), {
             'title': 'Updated Film',
             'genre': self.genre.id,
@@ -186,7 +186,7 @@ class ViewTests(TestCase):
         new_film.refresh_from_db()
         self.assertEqual(new_film.title, 'Updated Film')
 
-        # Test delete
+        # Suppression du film cree.
         response = self.client.post(reverse('movies:film_delete', kwargs={'pk': new_film.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Film.objects.filter(pk=new_film.pk).exists())
@@ -194,7 +194,7 @@ class ViewTests(TestCase):
     def test_review_flow(self):
         self.client.login(username='spectator1', password='testpass123')
 
-        # Add review
+        # Ajout d'un avis.
         response = self.client.post(reverse('movies:add_review', kwargs={'pk': self.film.pk}), {
             'rating': 4,
             'comment': 'Great movie!'
@@ -203,7 +203,7 @@ class ViewTests(TestCase):
         review = Review.objects.get(user=self.spectator, film=self.film)
         self.assertEqual(review.rating, 4)
 
-        # Update review
+        # Modification de l'avis existant.
         response = self.client.post(reverse('movies:add_review', kwargs={'pk': self.film.pk}), {
             'rating': 5,
             'comment': 'Even better!'
@@ -211,7 +211,7 @@ class ViewTests(TestCase):
         review.refresh_from_db()
         self.assertEqual(review.rating, 5)
 
-        # Delete review
+        # Suppression de l'avis.
         response = self.client.get(reverse('movies:delete_review', kwargs={'pk': self.film.pk, 'review_id': review.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Review.objects.filter(pk=review.pk).exists())
@@ -219,12 +219,12 @@ class ViewTests(TestCase):
     def test_watchlist_toggle(self):
         self.client.login(username='spectator1', password='testpass123')
 
-        # Add to watchlist
+        # Ajout a la watchlist.
         response = self.client.get(reverse('movies:toggle_watchlist', kwargs={'pk': self.film.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Watchlist.objects.filter(user=self.spectator, film=self.film).exists())
 
-        # Remove from watchlist
+        # Retrait de la watchlist.
         response = self.client.get(reverse('movies:toggle_watchlist', kwargs={'pk': self.film.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Watchlist.objects.filter(user=self.spectator, film=self.film).exists())
@@ -241,20 +241,20 @@ class AuthenticationTests(TestCase):
             'password1': 'testpass123',
             'password2': 'testpass123',
         })
-        self.assertEqual(response.status_code, 302)  # Redirect after successful registration
+        self.assertEqual(response.status_code, 302)  # Redirection apres inscription reussie.
         self.assertTrue(User.objects.filter(username='newuser').exists())
 
     def test_login_logout(self):
         User.objects.create_user(username='testuser', email='test@test.com', password='testpass123')
 
-        # Test login
+        # Connexion.
         response = self.client.post(reverse('movies:login'), {
             'username': 'testuser',
             'password': 'testpass123',
         })
         self.assertEqual(response.status_code, 302)
 
-        # Test logout
+        # Deconnexion.
         response = self.client.get(reverse('movies:logout'))
         self.assertEqual(response.status_code, 302)
 
