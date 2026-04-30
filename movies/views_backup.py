@@ -61,7 +61,7 @@ def film_detail(request, pk):
         user_review = reviews.filter(user=request.user).first()
         is_in_watchlist = Watchlist.objects.filter(user=request.user, film=film).exists()
 
-    # Calculate rating distribution
+    # Calcule la repartition des notes.
     rating_counts = reviews.values('rating').annotate(count=Count('rating')).order_by('rating')
 
     context = {
@@ -158,10 +158,10 @@ def search_films(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Get years for filter
+    # Recupere les annees disponibles pour le filtre.
     years = Film.objects.dates('release_date', 'year', order='DESC')
 
-    # Get selected genre object for display
+    # Recupere l'objet genre selectionne pour l'affichage.
     selected_genre_obj = None
     if genre_id:
         selected_genre_obj = Genre.objects.filter(id=genre_id).first()
@@ -226,14 +226,14 @@ def recommendations(request):
         messages.info(request, "Notez des films pour obtenir des recommandations personnalisées.")
         return redirect('movies:film_list')
 
-    # Get genres the user likes based on high ratings
+    # Identifie les genres preferes a partir des notes elevees.
     liked_genres = {}
     for review in user_reviews.filter(rating__gte=4):
         genre = review.film.genre
         if genre:
             liked_genres[genre.id] = liked_genres.get(genre.id, 0) + 1
 
-    # Get films from liked genres that user hasn't rated
+    # Recupere les films des genres preferes que l'utilisateur n'a pas notes.
     recommended_films = Film.objects.filter(genre__in=liked_genres.keys()).exclude(
         reviews__user=request.user
     ).annotate(
@@ -241,7 +241,7 @@ def recommendations(request):
         rating_count=Count('reviews')
     ).filter(rating_count__gte=1).order_by('-avg_rating')[:12]
 
-    # Get popular films (most rated) as fallback
+    # Utilise les films populaires comme solution de repli.
     popular_films = Film.objects.annotate(
         rating_count=Count('reviews')
     ).filter(rating_count__gte=3).exclude(
@@ -261,7 +261,7 @@ def user_dashboard(request):
     user_reviews = Review.objects.filter(user=request.user).select_related('film').order_by('-created_at')[:10]
     watchlist = Watchlist.objects.filter(user=request.user).select_related('film').order_by('-added_at')[:10]
 
-    # Stats
+    # Statistiques.
     total_reviews = Review.objects.filter(user=request.user).count()
     total_ratings_given = Review.objects.filter(user=request.user).aggregate(Sum('rating'))['rating__sum'] or 0
     avg_rating_given = Review.objects.filter(user=request.user).aggregate(Avg('rating'))['rating__avg'] or 0
