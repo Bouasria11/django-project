@@ -13,7 +13,7 @@ from .forms import (
 from datetime import datetime, timedelta
 
 def home(request):
-    """Homepage with featured and recent films"""
+    """Page d'accueil avec les films recents et les mieux notes."""
     recent_films = Film.objects.all().order_by('-created_at')[:8]
     top_rated_films = Film.objects.annotate(
         avg_rating=Avg('reviews__rating')
@@ -26,12 +26,13 @@ def home(request):
     return render(request, 'movies/home.html', context)
 
 def film_list(request):
-    """List all films with pagination and basic filtering"""
+    """Liste les films avec pagination et filtres simples."""
     genre_id = request.GET.get('genre')
     sort_by = request.GET.get('sort', '-release_date')
     films = Film.objects.all()
 
     if genre_id:
+        # Filtre facultatif par genre depuis les parametres de l'URL.
         films = films.filter(genre_id=genre_id)
 
     if sort_by:
@@ -51,17 +52,18 @@ def film_list(request):
     return render(request, 'movies/film_list.html', context)
 
 def film_detail(request, pk):
-    """Detailed view of a film with reviews"""
+    """Affiche le detail d'un film avec ses avis."""
     film = get_object_or_404(Film, pk=pk)
     reviews = film.reviews.all()
     user_review = None
     is_in_watchlist = False
 
     if request.user.is_authenticated:
+        # Recupere l'avis et la watchlist uniquement pour les utilisateurs connectes.
         user_review = reviews.filter(user=request.user).first()
         is_in_watchlist = Watchlist.objects.filter(user=request.user, film=film).exists()
 
-    # Calculate rating distribution
+    # Calcule la repartition des notes pour l'affichage detaille.
     rating_counts = reviews.values('rating').annotate(count=Count('rating')).order_by('rating')
 
     context = {
@@ -76,7 +78,7 @@ def film_detail(request, pk):
 
 @login_required
 def film_create(request):
-    """Create a new film (admin only)"""
+    """Cree un nouveau film, reserve aux administrateurs."""
     if not request.user.is_admin_role:
         messages.error(request, "Accès refusé. Droits d'administrateur requis.")
         return redirect('movies:home')
@@ -95,7 +97,7 @@ def film_create(request):
 
 @login_required
 def film_update(request, pk):
-    """Update an existing film (admin only)"""
+    """Modifie un film existant, reserve aux administrateurs."""
     if not request.user.is_admin_role:
         messages.error(request, "Accès refusé. Droits d'administrateur requis.")
         return redirect('movies:home')
@@ -115,7 +117,7 @@ def film_update(request, pk):
 
 @login_required
 def film_delete(request, pk):
-    """Delete a film (admin only)"""
+    """Supprime un film, reserve aux administrateurs."""
     if not request.user.is_admin_role:
         messages.error(request, "Accès refusé. Droits d'administrateur requis.")
         return redirect('movies:home')
@@ -131,7 +133,7 @@ def film_delete(request, pk):
     return render(request, 'movies/film_confirm_delete.html', context)
 
 def search_films(request):
-    """Search films by title, genre, or date"""
+    """Recherche des films par texte, genre ou annee."""
     query = request.GET.get('q', '')
     genre_id = request.GET.get('genre')
     year = request.GET.get('year')
@@ -158,10 +160,10 @@ def search_films(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Get years for filter
+    # Liste des annees disponibles pour alimenter le filtre.
     years = Film.objects.dates('release_date', 'year', order='DESC')
 
-    # Get selected genre object for display
+    # Objet genre selectionne, utile pour l'affichage du libelle.
     selected_genre_obj = None
     if genre_id:
         selected_genre_obj = Genre.objects.filter(id=genre_id).first()
@@ -181,11 +183,12 @@ def search_films(request):
 
 @login_required
 def add_review(request, pk):
-    """Add or update a review for a film"""
+    """Ajoute ou met a jour l'avis de l'utilisateur sur un film."""
     film = get_object_or_404(Film, pk=pk)
     existing_review = Review.objects.filter(user=request.user, film=film).first()
 
     if request.method == 'POST':
+        # Reutilise l'avis existant pour empecher les doublons utilisateur/film.
         if existing_review:
             form = ReviewForm(request.POST, instance=existing_review)
         else:
@@ -210,7 +213,7 @@ def add_review(request, pk):
 
 @login_required
 def delete_review(request, pk, review_id):
-    """Delete a review"""
+    """Supprime un avis appartenant a l'utilisateur connecte."""
     review = get_object_or_404(Review, pk=review_id, user=request.user)
     film_pk = review.film.pk
     review.delete()
@@ -219,21 +222,21 @@ def delete_review(request, pk, review_id):
 
 @login_required
 def recommendations(request):
-    """Personalized recommendations based on user ratings"""
+    """Recommandations personnalisees selon les notes de l'utilisateur."""
     user_reviews = Review.objects.filter(user=request.user).select_related('film', 'film__genre')
 
     if not user_reviews.exists():
         messages.info(request, "Notez des films pour obtenir des recommandations personnalisées.")
         return redirect('movies:film_list')
 
-    # Get genres the user likes based on high ratings
+    # Identifie les genres preferes a partir des notes elevees.
     liked_genres = {}
     for review in user_reviews.filter(rating__gte=4):
         genre = review.film.genre
         if genre:
             liked_genres[genre.id] = liked_genres.get(genre.id, 0) + 1
 
-    # Get films from liked genres that user hasn't rated
+    # Propose des films des genres preferes que l'utilisateur n'a pas encore notes.
     recommended_films = Film.objects.filter(genre__in=liked_genres.keys()).exclude(
         reviews__user=request.user
     ).annotate(
@@ -241,7 +244,7 @@ def recommendations(request):
         rating_count=Count('reviews')
     ).filter(rating_count__gte=1).order_by('-avg_rating')[:12]
 
-    # Get popular films (most rated) as fallback
+    # Repli: films populaires quand les recommandations personnalisees sont limitees.
     popular_films = Film.objects.annotate(
         rating_count=Count('reviews')
     ).filter(rating_count__gte=3).exclude(
@@ -257,11 +260,11 @@ def recommendations(request):
 
 @login_required
 def user_dashboard(request):
-    """User dashboard with profile, watchlist, and review history"""
+    """Tableau de bord avec profil, watchlist et historique des avis."""
     user_reviews = Review.objects.filter(user=request.user).select_related('film').order_by('-created_at')[:10]
     watchlist = Watchlist.objects.filter(user=request.user).select_related('film').order_by('-added_at')[:10]
 
-    # Stats
+    # Statistiques personnelles de l'utilisateur connecte.
     total_reviews = Review.objects.filter(user=request.user).count()
     total_ratings_given = Review.objects.filter(user=request.user).aggregate(Sum('rating'))['rating__sum'] or 0
     avg_rating_given = Review.objects.filter(user=request.user).aggregate(Avg('rating'))['rating__avg'] or 0
@@ -276,7 +279,7 @@ def user_dashboard(request):
     return render(request, 'movies/dashboard.html', context)
 
 def register(request):
-    """User registration"""
+    """Inscription d'un nouvel utilisateur."""
     if request.user.is_authenticated:
         return redirect('movies:home')
 
@@ -294,7 +297,7 @@ def register(request):
     return render(request, 'movies/register.html', context)
 
 def login_view(request):
-    """User login"""
+    """Connexion d'un utilisateur."""
     if request.user.is_authenticated:
         return redirect('movies:home')
 
@@ -317,14 +320,14 @@ def login_view(request):
 
 @login_required
 def logout_view(request):
-    """User logout"""
+    """Deconnexion de l'utilisateur."""
     logout(request)
     messages.info(request, 'Vous avez été déconnecté.')
     return redirect('movies:home')
 
 @login_required
 def toggle_watchlist(request, pk):
-    """Add or remove film from user's watchlist"""
+    """Ajoute ou retire un film de la watchlist de l'utilisateur."""
     film = get_object_or_404(Film, pk=pk)
     watchlist_item, created = Watchlist.objects.get_or_create(user=request.user, film=film)
 
