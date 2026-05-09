@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <!-- Search Header -->
+    <div class="col-12 mb-4">
+        <h1 class="h2 fw-bold mb-3">
+            <i class="bi bi-search me-2"></i>Recherche de Films
+        </h1>
+
+        <!-- Main Search Form -->
+        <div class="card bg-dark text-light border-0">
+            <div class="card-body">
+                <form method="get" action="{% url 'movies:search_films' %}" class="row g-3">
+                    <div class="col-md-6">
+                        <label for="q" class="form-label">Mots-clés</label>
+                        <input type="text"
+                               name="q"
+                               id="q"
+                               class="form-control form-control-lg"
+                               placeholder="Titre, description, réalisateur..."
+                               value="{{ query }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="genre" class="form-label">Genre</label>
+                        <select name="genre" id="genre" class="form-select form-select-lg">
+                            <option value="">Tous les genres</option>
+                            {% for genre in genres %}
+                            <option value="{{ genre.id }}" {% if selected_genre == genre.id|stringformat:"s" %}selected{% endif %}>
+                                {{ genre.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="year" class="form-label">Année</label>
+                        <select name="year" id="year" class="form-select form-select-lg">
+                            <option value="">Toutes les années</option>
+                            {% for year in years %}
+                            <option value="{{ year|date:'Y' }}" {% if selected_year == year|date:'Y' %}selected{% endif %}>
+                                {{ year|date:'Y' }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-search me-2"></i>Rechercher
+                        </button>
+                        {% if query or selected_genre or selected_year %}
+                        <a href="{% url 'movies:search_films' %}" class="btn btn-outline-secondary btn-lg ms-2">
+                            <i class="bi bi-x-circle me-2"></i>Effacer
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Active Filters -->
+        {% if query or selected_genre or selected_year %}
+        <div class="mt-3">
+            <span class="text-muted">Filtres actifs :</span>
+            {% if query %}
+            <span class="badge bg-primary me-2">
+                Recherche: "{{ query }}"
+            </span>
+            {% endif %}
+            {% if selected_genre_obj %}
+            <span class="badge bg-primary me-2">
+                Genre: {{ selected_genre_obj.name }}
+            </span>
+            {% endif %}
+            {% if selected_year %}
+            <span class="badge bg-primary me-2">
+                Année: {{ selected_year }}
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Results -->
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h4 fw-bold">
+                Résultats
+                <span class="text-muted">({{ total_results }} film(s))</span>
+            </h2>
+
+            <!-- Sort Options -->
+            <div class="d-flex align-items-center">
+                <label for="sort" class="me-2 text-muted">Trier par :</label>
+                <select name="sort" id="sort" class="form-select" onchange="updateSort()">
+                    <option value="-release_date" {% if sort_by == '-release_date' %}selected{% endif %}>Date (récent)</option>
+                    <option value="release_date" {% if sort_by == 'release_date' %}selected{% endif %}>Date (ancien)</option>
+                    <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Titre (A-Z)</option>
+                    <option value="-title" {% if sort_by == '-title' %}selected{% endif %}>Titre (Z-A)</option>
+                    <option value="-average_rating" {% if sort_by == '-average_rating' %}selected{% endif %}>Note</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Current query params for sort -->
+        <form id="sortForm" method="get" action="{% url 'movies:search_films' %}">
+            <input type="hidden" name="q" value="{{ query }}">
+            <input type="hidden" name="genre" value="{{ selected_genre }}">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+            <input type="hidden" name="sort" id="sortInput" value="{{ sort_by }}">
+        </form>
+
+        <script>
+            function updateSort() {
+                document.getElementById('sortInput').value = document.getElementById('sort').value;
+                document.getElementById('sortForm').submit();
+            }
+        </script>
+
+        {% if page_obj %}
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4">
+            {% for film in page_obj %}
+            <div class="col">
+                <div class="film-card card h-100">
+                    <div class="position-relative">
+                        {% if film.poster %}
+                        <img src="{{ film.poster.url }}" class="card-img-top film-poster" alt="{{ film.title }}">
+                        {% else %}
+                        <div class="card-img-top film-poster d-flex align-items-center justify-content-center bg-secondary">
+                            <i class="bi bi-film text-white" style="font-size: 3rem;"></i>
+                        </div>
+                        {% endif %}
+                        <span class="genre-badge">{{ film.genre.name }}</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">{{ film.title }}</h5>
+                        <p class="card-text small text-muted mb-2">
+                            <i class="bi bi-calendar me-1"></i>{{ film.release_date|date:"Y" }}
+                            {% if film.director %}| <i class="bi bi-person me-1"></i>{{ film.director }}{% endif %}
+                        </p>
+                        <div class="mt-auto d-flex justify-content-between align-items-center">
+                            {% if film.average_rating %}
+                            <span class="film-rating">
+                                <i class="bi bi-star-fill"></i> {{ film.average_rating }}
+                                <small class="text-muted">({{ film.review_count }})</small>
+                            </span>
+                            {% else %}
+                            <span class="text-muted small">Pas encore noté</span>
+                            {% endif %}
+                            <a href="{% url 'movies:film_detail' pk=film.pk %}" class="btn btn-sm btn-outline-primary">
+                                Détails
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if selected_year %}&year={{ selected_year }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if selected_year %}&year={{ selected_year }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if selected_year %}&year={{ selected_year }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-search"></i>
+            <h3>Aucun résultat</h3>
+            <p class="text-muted">Aucun film ne correspond à vos critères de recherche.</p>
+            <a href="{% url 'movies:search_films' %}" class="btn btn-primary mt-3">
+                <i class="bi bi-arrow-clockwise me-2"></i>Nouvelle recherche
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Search Tips -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card bg-dark text-light border-0">
+            <div class="card-body">
+                <h4 class="h5"><i class="bi bi-lightbulb me-2"></i>Conseils de recherche</h4>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-4">
+                        <div class="d-flex">
+                            <i class="bi bi-1-circle text-primary me-2 mt-1"></i>
+                            <div>
+                                <strong>Recherche par titre</strong><br>
+                                <small class="text-muted">Trouvez un film par son titre exact ou partiel</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex">
+                            <i class="bi bi-2-circle text-primary me-2 mt-1"></i>
+                            <div>
+                                <strong>Filtre par genre</strong><br>
+                                <small class="text-muted">Sélectionnez un genre spécifique</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex">
+                            <i class="bi bi-3-circle text-primary me-2 mt-1"></i>
+                            <div>
+                                <strong>Recherche par année</strong><br>
+                                <small class="text-muted">Films d'une année précise</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="h2 fw-bold mb-4">
+            <i class="bi bi-person-circle me-2"></i>Mon Compte
+            <span class="text-muted fs-5">{{ user.username }}</span>
+        </h1>
+    </div>
+</div>
+
+{% if messages %}
+<div class="messages mb-4">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Stats Overview -->
+<div class="row mb-4">
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_reviews }}</div>
+            <div class="stat-label">Avis rédigés</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-value">{{ avg_rating_given }}</div>
+            <div class="stat-label">Note moyenne donnée</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-value">{{ watchlist.count }}</div>
+            <div class="stat-label">Films dans ma liste</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_ratings_given }}</div>
+            <div class="stat-label">Total des points attribués</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Reviews -->
+    <div class="col-lg-8 mb-4">
+        <div class="card bg-dark text-light border-0 h-100">
+            <div class="card-header bg-transparent border-secondary">
+                <h2 class="h5 fw-bold mb-0" id="reviews">
+                    <i class="bi bi-chat-left-text me-2"></i>Mes Avis Récents
+                </h2>
+            </div>
+            <div class="card-body">
+                {% if user_reviews %}
+                <div class="list-group list-group-flush">
+                    {% for review in user_reviews %}
+                    <div class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                <a href="{% url 'movies:film_detail' pk=review.film.pk %}" class="text-light text-decoration-none">
+                                    {{ review.film.title }}
+                                </a>
+                            </h6>
+                            <small class="text-muted">{{ review.created_at|date:"d/m/Y" }}</small>
+                        </div>
+                        <div class="rating-stars mb-2">
+                            {% for i in "12345" %}
+                                {% if i <= review.rating %}
+                                <i class="bi bi-star-fill"></i>
+                                {% else %}
+                                <i class="bi bi-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <span class="ms-1">{{ review.rating }}/5</span>
+                        </div>
+                        <p class="mb-1 text-muted small">
+                            {{ review.comment|truncatewords:20 }}
+                        </p>
+                        <div class="mt-2">
+                            <a href="{% url 'movies:add_review' pk=review.film.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Modifier
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-chat-left-text"></i>
+                    <p>Vous n'avez pas encore écrit d'avis.</p>
+                    <a href="{% url 'movies:film_list' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-film me-1"></i>Parcourir les films
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Watchlist -->
+    <div class="col-lg-4 mb-4">
+        <div class="card bg-dark text-light border-0 h-100">
+            <div class="card-header bg-transparent border-secondary">
+                <h2 class="h5 fw-bold mb-0" id="watchlist">
+                    <i class="bi bi-bookmark-heart me-2"></i>Ma Liste de Surveillance
+                </h2>
+            </div>
+            <div class="card-body">
+                {% if watchlist %}
+                <div class="list-group list-group-flush">
+                    {% for item in watchlist %}
+                    <div class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">
+                                    <a href="{% url 'movies:film_detail' pk=item.film.pk %}" class="text-light text-decoration-none">
+                                        {{ item.film.title }}
+                                    </a>
+                                </h6>
+                                <small class="text-muted">
+                                    {{ item.film.genre.name }} • {{ item.film.release_date|date:"Y" }}
+                                </small>
+                            </div>
+                            <form action="{% url 'movies:toggle_watchlist' pk=item.film.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirer">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-bookmark"></i>
+                    <p>Votre liste de surveillance est vide.</p>
+                    <a href="{% url 'movies:film_list' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus me-1"></i>Ajouter des films
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Profile Info -->
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card bg-dark text-light border-0">
+            <div class="card-header bg-transparent border-secondary">
+                <h2 class="h5 fw-bold mb-0">
+                    <i class="bi bi-person me-2"></i>Profil
+                </h2>
+            </div>
+            <div class="card-body text-center">
+                {% if user.profile_picture %}
+                <img src="{{ user.profile_picture.url }}" alt="{{ user.username }}" class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;">
+                {% else %}
+                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 120px; height: 120px;">
+                    <i class="bi bi-person text-white" style="font-size: 3rem;"></i>
+                </div>
+                {% endif %}
+                <h4>{{ user.username }}</h4>
+                <p class="text-muted">{{ user.get_role_display }}</p>
+
+                {% if user.bio %}
+                <p class="mt-3">{{ user.bio }}</p>
+                {% endif %}
+
+                <div class="mt-3">
+                    <a href="{% url 'movies:recommendations' %}" class="btn btn-outline-primary btn-sm me-2">
+                        <i class="bi bi-heart me-1"></i>Recommandations
+                    </a>
+                    <a href="{% url 'movies:film_list' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-film me-1"></i>Catalogue
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8 mb-4">
+        <div class="card bg-dark text-light border-0">
+            <div class="card-header bg-transparent border-secondary">
+                <h2 class="h5 fw-bold mb-0">
+                    <i class="bi bi-gear me-2"></i>Paramètres du compte
+                </h2>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'admin:movies_user_change' user.pk %}" class="btn btn-primary">
+                    <i class="bi bi-pencil me-2"></i>Modifier mon profil
+                </a>
+                <p class="text-muted small mt-2">
+                    Vous pouvez modifier vos informations personnelles, votre photo de profil et vos préférences.
+                </p>
+
+                <hr class="border-secondary">
+
+                <h5 class="h6">Préférences de genre</h5>
+                {% if user.favorite_genres.all %}
+                <div class="mb-3">
+                    {% for genre in user.favorite_genres.all %}
+                    <span class="badge bg-primary me-1 mb-1">{{ genre.name }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted small">Aucun genre favori défini.</p>
+                {% endif %}
+
+                <a href="{% url 'admin:movies_user_change' user.pk %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-pencil me-1"></i>Modifier les préférences
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

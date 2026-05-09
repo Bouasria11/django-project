@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <!-- Hero Section -->
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white rounded-4 p-5 mb-5">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-4 fw-bold">Bienvenue sur Filmo</h1>
+                    <p class="lead">Découvrez, évaluez et recommandez des films. Votre bibliothèque cinématographique personnelle.</p>
+                    <div class="mt-4">
+                        <a href="{% url 'movies:film_list' %}" class="btn btn-light btn-lg me-2">
+                            <i class="bi bi-film me-2"></i>Explorer les films
+                        </a>
+                        <a href="{% url 'movies:search_films' %}" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-search me-2"></i>Rechercher
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="bi bi-film display-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Films -->
+    <div class="col-md-6 mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h4 fw-bold"><i class="bi bi-clock-history me-2"></i>Films Récents</h2>
+            <a href="{% url 'movies:film_list' %}?sort=-created_at" class="btn btn-outline-primary btn-sm">Voir tout</a>
+        </div>
+        <div class="row g-3">
+            {% for film in recent_films %}
+            <div class="col-6 col-md-6 col-lg-4">
+                <div class="film-card card h-100">
+                    <div class="position-relative">
+                        {% if film.poster %}
+                        <img src="{{ film.poster.url }}" class="card-img-top film-poster" alt="{{ film.title }}">
+                        {% else %}
+                        <div class="card-img-top film-poster d-flex align-items-center justify-content-center bg-secondary">
+                            <i class="bi bi-film text-white" style="font-size: 3rem;"></i>
+                        </div>
+                        {% endif %}
+                        <span class="genre-badge">{{ film.genre.name }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ film.title }}</h5>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                <i class="bi bi-calendar me-1"></i>{{ film.release_date|date:"Y" }}
+                                {% if film.director %}<br><i class="bi bi-person me-1"></i>{{ film.director }}{% endif %}
+                            </small>
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            {% if film.average_rating %}
+                            <span class="film-rating">
+                                <i class="bi bi-star-fill"></i> {{ film.average_rating }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">Pas encore noté</span>
+                            {% endif %}
+                            <a href="{% url 'movies:film_detail' pk=film.pk %}" class="btn btn-outline-primary btn-sm">Détails</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="empty-state">
+                    <i class="bi bi-film"></i>
+                    <p>Aucun film ajouté pour le moment.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Top Rated Films -->
+    <div class="col-md-6 mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h4 fw-bold"><i class="bi bi-award me-2"></i>Films Mieux Notés</h2>
+            <a href="{% url 'movies:film_list' %}?sort=-average_rating" class="btn btn-outline-primary btn-sm">Voir tout</a>
+        </div>
+        <div class="row g-3">
+            {% for film in top_rated_films %}
+            <div class="col-6 col-md-6 col-lg-4">
+                <div class="film-card card h-100">
+                    <div class="position-relative">
+                        {% if film.poster %}
+                        <img src="{{ film.poster.url }}" class="card-img-top film-poster" alt="{{ film.title }}">
+                        {% else %}
+                        <div class="card-img-top film-poster d-flex align-items-center justify-content-center bg-secondary">
+                            <i class="bi bi-film text-white" style="font-size: 3rem;"></i>
+                        </div>
+                        {% endif %}
+                        <span class="genre-badge">{{ film.genre.name }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ film.title }}</h5>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                <i class="bi bi-calendar me-1"></i>{{ film.release_date|date:"Y" }}
+                            </small>
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="film-rating">
+                                <i class="bi bi-star-fill"></i> {{ film.average_rating }}
+                            </span>
+                            <a href="{% url 'movies:film_detail' pk=film.pk %}" class="btn btn-outline-primary btn-sm">Détails</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="empty-state">
+                    <i class="bi bi-award"></i>
+                    <p>Aucune note attribuée pour le moment.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="text-center mb-4 fw-bold">Fonctionnalités</h2>
+        <div class="row g-4">
+            <div class="col-md-4 text-center">
+                <div class="feature-icon bg-primary bg-gradient text-white rounded-3 p-3 d-inline-flex mb-3">
+                    <i class="bi bi-search" style="font-size: 2rem;"></i>
+                </div>
+                <h4>Recherche Avancée</h4>
+                <p class="text-muted">Trouvez des films par titre, genre ou année de sortie.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="feature-icon bg-primary bg-gradient text-white rounded-3 p-3 d-inline-flex mb-3">
+                    <i class="bi bi-star" style="font-size: 2rem;"></i>
+                </div>
+                <h4>Évaluations & Avis</h4>
+                <p class="text-muted">Notez les films et partagez vos impressions.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="feature-icon bg-primary bg-gradient text-white rounded-3 p-3 d-inline-flex mb-3">
+                    <i class="bi bi-bookmark-heart" style="font-size: 2rem;"></i>
+                </div>
+                <h4>Liste de Surveillance</h4>
+                <p class="text-muted">Gérez votre watchlist personnelle.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card bg-dark text-light border-0">
+            <div class="card-body">
+                <h1 class="card-title h3 mb-4">
+                    {% if is_edit %}
+                        <i class="bi bi-pencil me-2"></i>Modifier mon avis
+                    {% else %}
+                        <i class="bi bi-star me-2"></i>Donner mon avis
+                    {% endif %}
+                    <span class="text-muted fs-6"> - {{ film.title }}</span>
+                </h1>
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label for="{{ form.rating.id_for_label }}" class="form-label h5">Votre note *</label>
+                        {{ form.rating }}
+                        {% if form.rating.errors %}
+                        <div class="text-danger small">{{ form.rating.errors }}</div>
+                        {% endif %}
+
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <span class="text-warning">1</span> = Mauvais |
+                                <span class="text-warning">3</span> = Correct |
+                                <span class="text-warning">5</span> = Excellent
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.comment.id_for_label }}" class="form-label h5">Votre commentaire</label>
+                        {{ form.comment }}
+                        {% if form.comment.errors %}
+                        <div class="text-danger small">{{ form.comment.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">
+                            Partagez votre opinion sur le film (synopsis, jeu d'acteur, réalisation, etc.)
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'movies:film_detail' pk=film.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour au film
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            {% if is_edit %}
+                                <i class="bi bi-check-circle me-2"></i>Modifier l'avis
+                            {% else %}
+                                <i class="bi bi-send me-2"></i>Publier l'avis
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Film Info Card -->
+        <div class="card bg-dark text-light border-0 mt-3">
+            <div class="card-body">
+                <h5 class="card-title">À propos du film</h5>
+                <div class="d-flex">
+                    {% if film.poster %}
+                    <img src="{{ film.poster.url }}" alt="{{ film.title }}" class="me-3 rounded" style="width: 80px; height: auto;">
+                    {% endif %}
+                    <div>
+                        <h6>{{ film.title }}</h6>
+                        <p class="small text-muted mb-0">
+                            {{ film.genre.name }} • {{ film.release_date|date:"Y" }}
+                            {% if film.director %}<br>Réalisé par {{ film.director }}{% endif %}
+                        </p>
+                        {% if film.average_rating %}
+                        <small class="text-warning">
+                            <i class="bi bi-star-fill"></i> {{ film.average_rating }}/5 ({{ film.review_count }} avis)
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
